@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site-with-headers",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/serve-local.mjs", "8788"],
+      "port": 8788
+    }
+  ]
+}

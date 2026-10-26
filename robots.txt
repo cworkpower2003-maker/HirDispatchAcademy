@@ -1,6 +1,0 @@
-# Upload to the site root, next to index.html.
-# Before uploading, replace PRODUCTION-DOMAIN with the confirmed domain (for example the academy's own .in or .com address).
-User-agent: *
-Allow: /
-
-Sitemap: https://PRODUCTION-DOMAIN/sitemap.xml

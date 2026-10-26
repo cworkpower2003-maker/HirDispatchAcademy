@@ -1,0 +1,7 @@
+# Netlify build settings for hirdispatchacademy (static site, no build step, no functions).
+# Only the site/ folder is published; docs/ and tools/ never reach the web.
+# Response headers live in site/_headers so they also apply to drag-and-drop and CLI deploys of site/.
+[build]
+  publish = "site"
+  # Stops the deploy if the CSP hashes in site/_headers no longer match the inline scripts in site/index.html
+  command = "node tools/csp-hashes.mjs --check"
