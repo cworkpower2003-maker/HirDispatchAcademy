@@ -823,6 +823,144 @@ a,button{transition:color .2s ease,background-color .2s ease,border-color .2s ea
 @keyframes hirIntroRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes hirIntroLine{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes hirIntroSweep{0%{transform:translateX(-12%);opacity:0}35%{opacity:1}100%{transform:translateX(12%);opacity:.5}}
+
+/* =====================================================================
+   Premium motion layer (v4)
+   Everything below only refines what is already on the page. Hidden start states apply only when the
+   script adds .motion-ok (motion allowed + IntersectionObserver available), so content is never lost
+   without JavaScript, with reduced motion, or in print.
+   ===================================================================== */
+p,.lead,.walk__sum,.path__purpose{text-wrap:pretty}
+.h2{letter-spacing:-.03em}
+.on-dark.sec,.final,.footer{position:relative}
+
+/* ---- Masked headline lines (hero always; section titles when the script wraps them) ---- */
+.ln{display:block;overflow:hidden;padding:0 .14em .12em 0;margin:0 -.14em -.12em 0}
+.ln__in{display:block;will-change:transform}
+@media (prefers-reduced-motion:no-preference){
+  .hero h1 .ln__in{animation:maskUp 1.15s var(--ease-out) backwards;animation-delay:calc(var(--d,0) * 95ms + 90ms)}
+  .has-intro .hero h1 .ln__in{animation-delay:calc(var(--d,0) * 95ms + 1080ms)}
+  .has-intro.intro-skip .hero h1 .ln__in{animation-name:maskUpNow;animation-delay:calc(var(--d,0) * 70ms)}
+}
+@keyframes maskUp{from{transform:translateY(112%)}to{transform:none}}
+@keyframes maskUpNow{from{transform:translateY(112%)}to{transform:none}}
+.motion-ok .mask-wait .ln__in{transform:translateY(112%)}
+.motion-ok .mask-wait.play .ln__in{transform:none;transition:transform 1.15s var(--ease-out);transition-delay:calc(var(--d,0) * 80ms)}
+
+/* ---- Hero photos: a slow depth drift while the hero scrolls away (scroll timelines only) ---- */
+@supports (animation-timeline: view()){
+  @media (prefers-reduced-motion:no-preference) and (min-width:901px){
+    .collage__main{animation:driftA linear both;animation-timeline:view();animation-range:exit 0% exit 100%}
+    .collage__sub{animation:driftB linear both;animation-timeline:view();animation-range:exit 0% exit 100%}
+  }
+}
+@keyframes driftA{to{transform:translateY(-26px)}}
+@keyframes driftB{to{transform:translateY(-62px)}}
+@media (hover:hover) and (pointer:fine){
+  .collage__main img{transition:transform 1.2s var(--ease-out),filter .6s}
+  .collage:hover .collage__main img{transform:scale(1.025)}
+}
+
+/* ---- Scroll reveals: staggered rise, images unmask ---- */
+.rv.play{animation:none}
+.motion-ok .rv-wait{opacity:0;transform:translateY(26px)}
+.motion-ok .rv-wait.play{opacity:1;transform:none;transition:opacity .95s var(--ease-out),transform 1.1s var(--ease-out),clip-path 1.3s var(--ease-out);transition-delay:calc(var(--d,0) * 85ms)}
+.motion-ok .rv-wait .frame,.motion-ok .career__media.rv-wait,.motion-ok .about figure.rv-wait img{clip-path:inset(10% 8% 10% 8% round 10px)}
+.motion-ok .rv-wait.play .frame,.motion-ok .about figure.rv-wait.play img{clip-path:inset(0 0 0 0 round 10px);transition:clip-path 1.3s var(--ease-out);transition-delay:calc(var(--d,0) * 85ms + 60ms)}
+.motion-ok .career__media.rv-wait.play{clip-path:inset(0 0 0 0 round 10px)}
+
+/* ---- Section seams: a copper lane line draws across the top of each dark section ---- */
+.seam::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;z-index:1;pointer-events:none;background:repeating-linear-gradient(90deg,rgba(216,117,69,.55) 0 18px,transparent 18px 30px);transform-origin:left center;transition:transform 1.6s var(--ease-out)}
+.motion-ok .seam:not(.in-view)::after{transform:scaleX(0)}
+.footer.seam::after{background:repeating-linear-gradient(90deg,rgba(216,117,69,.4) 0 18px,transparent 18px 30px)}
+
+/* ---- Navigation ---- */
+.nav a{transition:opacity .2s,color .25s}
+.site-header.solid .nav a:hover,.site-header.solid .nav a[aria-current="true"]{color:var(--copper-ink)}
+.mnav ul{counter-reset:mn}
+.mnav li a{justify-content:flex-start;gap:1rem}
+.mnav li a::before{counter-increment:mn;content:counter(mn,decimal-leading-zero);font-family:var(--body);font-weight:600;font-size:.78rem;letter-spacing:.04em;color:var(--copper-soft);min-width:1.6rem;font-variant-numeric:tabular-nums}
+.mnav li a::after{content:"\2192";margin-left:auto;font-family:var(--body);font-weight:400;font-size:1.1rem;color:var(--on-dark-muted);transform:translateX(-6px);opacity:.5;transition:transform .35s var(--ease),opacity .35s,color .25s}
+.mnav li a:hover::after,.mnav li a:focus-visible::after{transform:none;opacity:1;color:var(--copper-soft)}
+@media (prefers-reduced-motion:no-preference){
+  .mnav:not([hidden]){animation:mnavIn .4s var(--ease-out)}
+  .mnav:not([hidden]) li,.mnav:not([hidden]) .mnav__foot{animation:mnavItem .6s var(--ease-out) backwards}
+  .mnav li:nth-child(1){animation-delay:60ms}.mnav li:nth-child(2){animation-delay:105ms}.mnav li:nth-child(3){animation-delay:150ms}
+  .mnav li:nth-child(4){animation-delay:195ms}.mnav li:nth-child(5){animation-delay:240ms}.mnav li:nth-child(6){animation-delay:285ms}
+  .mnav li:nth-child(7){animation-delay:330ms}.mnav .mnav__foot{animation-delay:390ms}
+  .menu-btn .icon{transition:transform .35s var(--ease)}
+  body.menu-open .menu-btn .icon{transform:rotate(90deg)}
+}
+@keyframes mnavIn{from{opacity:0}to{opacity:1}}
+@keyframes mnavItem{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ---- Buttons and links ---- */
+.btn--dark-line::before,.btn--line::before{content:"";position:absolute;inset:0;z-index:-1;transform:scaleX(0);transform-origin:right center;transition:transform .55s var(--ease-out)}
+.btn--dark-line::before{background:rgba(216,117,69,.13)}
+.btn--line::before{background:rgba(23,25,22,.045)}
+.btn--dark-line:hover::before,.btn--line:hover::before{transform:scaleX(1);transform-origin:left center}
+.btn--primary:active{box-shadow:0 4px 14px -8px rgba(216,117,69,.8)}
+.textlink{text-decoration:none;background:linear-gradient(currentColor,currentColor) left bottom/100% 1px no-repeat;transition:background-size .4s var(--ease-out)}
+.textlink:hover{background-size:0 1px;background-position:right bottom}
+.route-card .textlink{background-position:left calc(50% + .72em)}
+.chip-btn:active,.format-link:active{transform:scale(.98)}
+.chip-btn,.format-link{transition:border-color .2s,background-color .2s,transform .2s var(--ease)}
+
+/* ---- Batches ---- */
+.route-card::before{transition:height .45s var(--ease-out)}
+.route-card:hover::before{height:5px}
+.route-card__icon{transition:transform .5s var(--ease-out)}
+.route-card:hover .route-card__icon{transform:translateY(-3px) rotate(-4deg)}
+@media (prefers-reduced-motion:no-preference){
+  .fork path{animation:forkFlow 1.6s linear infinite paused}
+  .fork.in-view path{animation-play-state:running;animation-iteration-count:2}
+}
+@keyframes forkFlow{to{stroke-dashoffset:-48}}
+
+/* ---- Course: the four modules read as one route ---- */
+.path::after{content:"";position:absolute;left:27px;top:28px;bottom:28px;width:3px;border-radius:2px;background:linear-gradient(180deg,var(--copper),var(--copper-hi));transform-origin:center top;transform:scaleY(var(--path-p,0));transition:transform .25s linear}
+.path__pin{transition:background-color .45s,color .45s,box-shadow .45s,transform .45s var(--ease)}
+.path > li.is-lit .path__pin{background:var(--copper);color:var(--ink);box-shadow:0 0 0 7px var(--ivory-2),0 0 0 11px rgba(216,117,69,.18)}
+.path__body{position:relative}
+.path__body::before{content:"";position:absolute;left:-1px;top:18px;bottom:18px;width:3px;border-radius:0 3px 3px 0;background:var(--copper);transform:scaleY(0);transform-origin:center top;transition:transform .55s var(--ease-out)}
+.path > li:hover .path__body::before,.path > li:focus-within .path__body::before{transform:scaleY(1)}
+.path h3{transition:color .3s}
+.path > li:hover h3{color:var(--copper-ink)}
+.topics li{transition:border-color .25s,background-color .25s,transform .3s var(--ease)}
+@media (hover:hover) and (pointer:fine){.topics li:hover{border-color:var(--copper);background:var(--copper-wash);transform:translateY(-1px)}}
+@media (max-width:760px){.path::after{left:21px}}
+
+/* ---- Career: each step lights its lane in turn ---- */
+.stage{position:relative}
+.stage::before{content:"";position:absolute;left:0;right:0;top:-1px;height:2px;background:var(--copper);transform-origin:left center}
+.motion-ok .stage.rv-wait::before{transform:scaleX(0)}
+.motion-ok .stage.rv-wait.play::before{transform:scaleX(1);transition:transform 1.1s var(--ease-out);transition-delay:calc(var(--d,0) * 140ms + 200ms)}
+.stage:first-child::before{border-top-left-radius:var(--r)}
+.stage:last-child::before{border-top-right-radius:var(--r)}
+@media (max-width:1100px){.stage:nth-child(n+3)::before{top:-1px}}
+.stage h4{transition:color .3s}
+.stage:hover h4{color:var(--copper-soft)}
+.career__media img{transition:transform 1.4s var(--ease-out)}
+@media (hover:hover) and (pointer:fine){.career__media:hover img{transform:scale(1.03)}}
+
+/* ---- FAQ ---- */
+.faq-list summary{transition:color .2s,padding-left .35s var(--ease)}
+@media (hover:hover) and (pointer:fine){.faq-list summary:hover{padding-left:.35rem}}
+.faq-list details[open] summary{color:var(--text)}
+
+/* ---- Final call to action: the photo settles in, the heading unmasks ---- */
+.motion-ok .final__img{transform:scale(1.08);transition:transform 2.8s var(--ease-out)}
+.motion-ok .final.in-view .final__img{transform:none}
+.final h2 .ln__in{max-width:17ch}
+
+/* ---- Footer: a closing wordmark that fills with copper ---- */
+.footer{overflow:hidden}
+.footer__mark{margin:clamp(44px,6vw,80px) 0 0;font-family:var(--display);font-weight:800;text-transform:uppercase;white-space:nowrap;font-size:min(7vw,6.4rem);line-height:.86;letter-spacing:-.03em;color:transparent;background:linear-gradient(90deg,var(--copper) 0 50%,rgba(242,237,227,.07) 50%) right center/200% 100% no-repeat;-webkit-background-clip:text;background-clip:text;transition:background-position 2.4s var(--ease-out);user-select:none}
+.footer.in-view .footer__mark{background-position:left center}
+.footer__mark + .footer__bar{margin-top:clamp(24px,3vw,40px)}
+@supports not ((-webkit-background-clip:text) or (background-clip:text)){.footer__mark{color:rgba(242,237,227,.08)}}
+
+@media print{.motion-ok .rv-wait,.motion-ok .mask-wait .ln__in{opacity:1!important;transform:none!important;clip-path:none!important}}
 </style>
 <noscript><style>dialog.policy{display:block;position:static;width:auto;max-width:880px;max-height:none;margin:32px auto;border:1px solid var(--line);box-shadow:none;overflow:visible}dialog.policy .icon-btn{display:none}dialog.policy .policy__head{position:static}</style></noscript>
 </head>
@@ -985,7 +1123,7 @@ a,button{transition:color .2s ease,background-color .2s ease,border-color .2s ea
   <div class="wrap hero__grid">
     <div>
       <p class="hero__where" data-load style="--d:0"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg>Online batches and classroom batches in Patran, Punjab</p>
-      <h1 id="hero-title"><span data-load style="--d:1">Truck dispatch</span> <span class="serif" data-load style="--d:2">&amp; logistics training,</span> <span data-load style="--d:3">in one course.</span></h1>
+      <h1 id="hero-title"><span class="ln"><span class="ln__in" style="--d:1">Truck dispatch</span></span> <span class="ln serif"><span class="ln__in" style="--d:2">&amp; logistics training,</span></span> <span class="ln"><span class="ln__in" style="--d:3">in one course.</span></span></h1>
       <p class="hero__sub" data-load style="--d:4">Learn the work behind every mile on the road: choosing freight, negotiating with brokers, handling paperwork and billing, and staying compliant in US and Canadian trucking. The Complete Truck Dispatch &amp; Logistics Training Program is built for beginners.</p>
       <div class="btn-row" data-load style="--d:5">
         <a class="btn btn--primary" href="#program">Explore the Course<svg class="icon btn__arrow" aria-hidden="true"><use href="#i-right"/></svg></a>
@@ -1732,6 +1870,7 @@ a,button{transition:color .2s ease,background-color .2s ease,border-color .2s ea
         </ul>
       </nav>
     </div>
+    <p class="footer__mark" aria-hidden="true">HIR Dispatch</p>
     <div class="footer__bar">
       <p>&copy; <span id="year">2026</span> HIR Dispatch Academy, Patran</p>
       <p class="credit">Crafted by
@@ -2336,19 +2475,80 @@ const WA_MESSAGES = {
       el.classList.add("rv"); el.style.setProperty("--d", d++);
     });
   });
-  // Without IntersectionObserver (or with reduced motion) nothing is observed and everything simply stays visible.
+  // Dark sections get a lane line that draws across their top edge
+  $$(".on-dark.sec, .final, .footer").forEach((el) => el.classList.add("seam"));
+  // One observer marks the seams, the fork, the final photo and the footer wordmark once they are in view
+  const once = $$(".seam, .fork");
+  if ("IntersectionObserver" in window) {
+    const seen = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add("in-view"); seen.unobserve(e.target); }
+    }), { rootMargin: "0px 0px -12% 0px" });
+    once.forEach((el) => seen.observe(el));
+  } else once.forEach((el) => el.classList.add("in-view"));
+
+  // Without IntersectionObserver (or with reduced motion) nothing is hidden and everything simply stays visible.
   if (!reduce && "IntersectionObserver" in window) {
-    const waiting = $$(".rv").filter((el) => el.getBoundingClientRect().top > window.innerHeight * 1.1);
-    let left = waiting.length;
+    document.documentElement.classList.add("motion-ok");
+    const vh = window.innerHeight;
+    // Lists reveal item by item instead of as one block
+    [[".stages", ":scope > .stage"], [".faq-list", ":scope > details"], [".channels", ":scope > .channel"],
+     [".facts", ":scope > div"], [".footer__grid", ":scope > *"], [".gallery", ":scope > *"]].forEach(([p, c]) => $$(p).forEach((parent) => {
+      parent.classList.remove("rv");
+      $$(c, parent).forEach((el, i) => { el.classList.add("rv"); el.style.setProperty("--d", i); });
+    }));
+    // Section titles below the fold rise out of a mask, line block by line block
+    $$("main .sec .h2, .final h2").forEach((h) => {
+      if (h.getBoundingClientRect().top < vh) return;
+      h.classList.remove("rv");
+      const d = h.style.getPropertyValue("--d");
+      h.innerHTML = `<span class="ln"><span class="ln__in"${d ? ` style="--d:${d}"` : ""}>${h.innerHTML}</span></span>`;
+      h.classList.add("mask-wait");
+    });
+    const waiting = $$(".rv").filter((el) => el.getBoundingClientRect().top > vh);
+    waiting.forEach((el) => el.classList.add("rv-wait"));
+    const masked = $$(".mask-wait");
+    let left = waiting.length + masked.length;
+    const settle = (el) => {
+      // Once the entrance ends, hand the element back to its own hover transitions
+      const done = (e) => {
+        if (e.target !== el || e.propertyName !== "transform") return;
+        el.removeEventListener("transitionend", done);
+        el.classList.remove("rv-wait", "play");
+      };
+      el.addEventListener("transitionend", done);
+    };
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (!e.isIntersecting) return;
         e.target.classList.add("play");
+        if (e.target.classList.contains("rv-wait")) settle(e.target);
         io.unobserve(e.target);
         if (--left === 0) io.disconnect();
       });
-    }, { rootMargin: "0px 0px 12% 0px" });
-    waiting.forEach((el) => io.observe(el));
+    }, { rootMargin: "0px 0px -8% 0px" });
+    [...waiting, ...masked].forEach((el) => io.observe(el));
+  }
+
+  /* ---------- Course route: the line fills and each module's stop lights as it is reached ---------- */
+  const path = $(".path");
+  if (path) {
+    const items = $$(":scope > li", path);
+    const pinsP = items.map((li) => $(".path__pin", li));
+    let queued = false, near = !("IntersectionObserver" in window);
+    const paint = () => {
+      queued = false;
+      const r = path.getBoundingClientRect(), line = window.innerHeight * 0.62;
+      const first = pinsP[0].getBoundingClientRect(), last = pinsP[pinsP.length - 1].getBoundingClientRect();
+      const a = first.top + first.height / 2, b = last.top + last.height / 2;
+      path.style.setProperty("--path-p", clamp((line - a) / ((b - a) || 1), 0, 1).toFixed(4));
+      pinsP.forEach((p, i) => { const pr = p.getBoundingClientRect(); items[i].classList.toggle("is-lit", pr.top + pr.height / 2 <= line); });
+      void r;
+    };
+    const q = () => { if (near && !queued) { queued = true; requestAnimationFrame(paint); } };
+    if (!near) new IntersectionObserver(([e]) => { near = e.isIntersecting; q(); }, { rootMargin: "50% 0px" }).observe(path);
+    window.addEventListener("scroll", q, { passive: true });
+    window.addEventListener("resize", q);
+    q();
   }
 
   /* ---------- Dispatch Desk Walkthrough ----------
