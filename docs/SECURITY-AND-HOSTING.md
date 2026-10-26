@@ -1,29 +1,37 @@
-# HIR Dispatch Academy website: security, hosting and launch notes
+# HIR Dispatch Academy website: security, hosting and deployment
 
 Last reviewed: 26 October 2026
 
 ## How the site works
 
-- **Hosting:** Netlify project `hirdispatchacademy` (Free plan), live at https://hirdispatchacademy.netlify.app.
-  The live `index.html` was byte-identical to the approved file when this review began.
-- **Architecture:** one static HTML page (`site/index.html`, about 611 KB, 343 KB with brotli). Fonts, photos and the logo are
-  inlined as `data:` URIs. There is no backend, no serverless function, no database, no Netlify Forms, no cookies,
-  no analytics and no third-party script.
-- **Enquiry form:** validated in the browser, then opens WhatsApp (`wa.me`) with the details in the message. Nothing is
-  sent to a server of ours. If `CONFIG.formEndpoint` is set later, see "If a form service is added" below.
-- **Policies:** six dialogs on the page, opened from the footer or directly by URL:
-  `#privacy-policy`, `#terms-of-use`, `#security-policy`, `#cookie-policy`, `#course-disclaimer`, `#enrolment-refunds`.
-  Owner-to-confirm notes are hidden on the live site and appear when the page is opened with `#placeholders`.
+- **Architecture:** one static HTML page, no framework, no build step, no `package.json`, no dependencies.
+  Entry point: `site/index.html` (about 611 KB; about 343 KB with brotli, 360 KB with gzip). Fonts, photos and the
+  logo are inlined as `data:` URIs, so a page view is **one HTTP request** with no other files to fetch.
+- **Host disclosure:** the privacy policy names Vercel as the hosting provider (request logs: IP address, browser, time).
+- **No backend:** no API, serverless function, database, cookies, analytics or third-party scripts. No environment
+  variables or secrets are needed.
+- **Enquiry form:** validated in the browser, then opens WhatsApp (`https://wa.me/917986369090?text=…`) with the
+  details URL-encoded into the message. Nothing reaches the academy until the visitor presses Send in WhatsApp.
+  This is not server-side form processing. The details do travel in the wa.me URL to WhatsApp (Meta), which the
+  privacy policy states.
+- **Policies:** six dialogs on the page, opened from the footer or by URL: `#privacy-policy`, `#terms-of-use`,
+  `#security-policy`, `#cookie-policy`, `#course-disclaimer`, `#enrolment-refunds`. Owner-to-confirm notes are
+  hidden on the live site and appear when the page is opened with `#placeholders`.
 
 ## Repository layout
 
 | Path | Published? | Purpose |
 |---|---|---|
-| `site/` | Yes (Netlify publish folder) | `index.html`, `og-image.jpg`, `robots.txt`, `_headers` |
-| `netlify.toml` | No | Publish folder and the CSP check build command |
-| `tools/csp-hashes.mjs` | No | Computes/checks the CSP hashes of the inline scripts |
-| `tools/serve-local.mjs` | No | Local preview at http://127.0.0.1:8788 with `_headers` applied |
+| `site/` | Yes (Vercel output directory) | `index.html`, `og-image.jpg`, `robots.txt` |
+| `vercel.json` | No | Output directory, build command, security headers |
+| `tools/validate.mjs` | No | Pre-deploy checks; Vercel's build command |
+| `tools/csp-hashes.mjs` | No | Computes/checks/writes the CSP script hashes in `vercel.json` |
+| `tools/serve-local.mjs` | No | Local preview at http://127.0.0.1:8788 with the `vercel.json` headers applied |
 | `docs/` | No | These notes and the launch templates (head tags, sitemap) |
+
+Hosting history: the site was first published on Netlify (`hirdispatchacademy.netlify.app`, still live with the
+pre-policy-update version). `netlify.toml` and `site/_headers` were removed when hosting moved to Vercel; they are in
+the git history (commit 31deb1e) if ever needed.
 
 ## Editing the page safely
 
@@ -32,85 +40,108 @@ The Content-Security-Policy only lets an inline script run if its SHA-256 hash i
 
 ```
 node tools/csp-hashes.mjs --write
+node tools/validate.mjs
 node tools/serve-local.mjs
 ```
 
-Open http://127.0.0.1:8788, check the browser console has no CSP errors, then commit `site/index.html` and
-`site/_headers` together. Netlify's build runs `node tools/csp-hashes.mjs --check` and refuses to deploy stale hashes.
-A drag-and-drop deploy skips that check, so run it yourself first.
+Open http://127.0.0.1:8788, check the console has no CSP errors, then commit `site/index.html` and `vercel.json`
+together. Vercel runs `node tools/validate.mjs` as the build command, so a deploy with stale hashes, a missing file,
+a broken in-page link or a missing security header fails instead of going live.
 
 Editing text outside `<script>` blocks needs no hash update.
 
-## Security headers (site/_headers)
+## Security headers (vercel.json)
 
 | Header | Value / purpose |
 |---|---|
-| Content-Security-Policy | `default-src 'none'`; scripts only by hash; images/fonts from the page itself and `data:`; `frame-ancestors 'none'`; `base-uri 'none'`; `object-src 'none'`; `form-action 'self'` |
+| Content-Security-Policy | `default-src 'none'`; scripts only by hash (no `unsafe-inline`/`unsafe-eval`); images and fonts from the site and `data:`; `connect-src 'self'`; `form-action 'self'`; `frame-ancestors 'none'`; `base-uri 'none'`; `object-src 'none'`; `upgrade-insecure-requests` |
+| Strict-Transport-Security | `max-age=63072000` (2 years). Without `includeSubDomains`/`preload`, so other subdomains of a future custom domain are not forced onto HTTPS without checking. Add them later only if every subdomain serves HTTPS. |
 | X-Content-Type-Options | `nosniff` |
 | X-Frame-Options | `DENY` (legacy fallback for `frame-ancestors`) |
-| Referrer-Policy | `strict-origin-when-cross-origin` |
-| Permissions-Policy | camera, microphone, geolocation, payment, sensors, USB etc. switched off |
+| Referrer-Policy | `strict-origin-when-cross-origin` (wa.me, Instagram and Maps receive only the site's origin) |
+| Permissions-Policy | camera, microphone, geolocation, payment, sensors, USB etc. switched off. Clipboard is left alone because "Copy number" uses it. |
 | Cross-Origin-Opener-Policy | `same-origin` |
-| Strict-Transport-Security | Already sent by Netlify on `*.netlify.app` (`max-age=31536000; includeSubDomains; preload`). Not set in `_headers`; confirm it on the custom domain after launch. |
 
-`style-src` keeps `'unsafe-inline'` because the approved design relies on `<style>` blocks and `style=""` attributes.
-The risk is low because no user input is ever written into the page as HTML.
+Limits of this policy: `style-src` keeps `'unsafe-inline'` because the approved design relies on `<style>` blocks
+and `style=""` attributes. The risk is low because no user input is ever written into the page as HTML (all
+dynamic text goes through `textContent` or an escaping helper). Headers reduce the impact of some attacks; they do
+not make the site invulnerable.
 
-Cross-Origin-Resource-Policy and Cross-Origin-Embedder-Policy are deliberately not set: they add no protection to a
-page with no secrets, and CORP could stop other sites from showing the share image.
+Caching: HTML uses Vercel's default (`public, max-age=0, must-revalidate`, cached at the edge and purged on each
+deploy), so returning visitors revalidate and get a small `304 Not Modified` instead of the full page, and a new
+deploy is visible immediately. `og-image.jpg` is cached for one day.
 
-## Traffic, abuse and "10,000 requests"
+## Traffic: what "10,000" means
 
-Every request is a static file served from Netlify's CDN. No request can start a server-side process, a function or a
-database query, so there is no expensive endpoint to exhaust and no function cost to run up.
+| Measure | Meaning for this site | Transfer (measured sizes, compressed) |
+|---|---|---|
+| 10,000 HTTP requests | Each request for `/` returns the whole page; there are no sub-requests | ≈ 3.4 GB if all are full page loads, far less if many are 304 revalidations |
+| 10,000 page views | 10,000 loads of the page = ≈ 10,000 requests | ≈ 3.4 GB |
+| 10,000 unique visitors | Different people; each may view the page several times | ≈ 3.4 GB × average views per visitor |
 
-| Scenario | Expected behaviour |
-|---|---|
-| 10,000 visits spread over days or weeks | Normal traffic. About 3.4 GB of transfer (343 KB each, compressed). |
-| 10,000 requests in one minute | Served from CDN cache; not a capacity problem for Netlify. The cost is bandwidth (~3.4 GB). |
-| 10,000 simultaneous requests | Same as above; CDN edges absorb it. Not tested against the live site. |
-| Coordinated malicious flood | Netlify's platform DDoS mitigation applies to all plans. Large or sustained floods mainly threaten the plan's **bandwidth allowance**, not availability of a server. |
+All of this is static content served from Vercel's CDN. No request triggers server-side work, so there is no
+function or database to overload and no function cost. No load test was run; nothing above is a guarantee.
 
-None of this is guaranteed. The real risk for this site is **usage limits**: on the Free plan, exceeding the monthly
-allowance can pause the site or require an upgrade. Check the current terms under Netlify > Team > Billing/Usage.
-No load test was run against the live site.
+### Vercel plan limits (from Vercel's published plan terms; NOT verified against the live account)
 
-Rate limiting written in browser JavaScript would not stop an attacker, so none was added. `robots.txt` does not block
-attackers either; it only guides well-behaved crawlers.
+- **Hobby (free) is for personal, non-commercial use only.** HIR Dispatch Academy is a business, so the **Pro**
+  plan is the appropriate one. This is a hosting decision for the owner.
+- Hobby includes roughly 100 GB of data transfer and 1 million edge requests per month. If a limit is exceeded,
+  Vercel can pause the project until the period resets or the plan is upgraded. At ~343 KB per view that is roughly
+  290,000 page views a month.
+- Pro includes more (about 1 TB transfer and 10 million edge requests a month) and then bills usage on demand. Set a
+  **spend limit** (Settings > Billing > Spend Management) so a flood cannot create an unexpected bill.
+- Check the current numbers on Vercel's pricing page before deciding; they change.
 
-### Needs hosting configuration (Netlify dashboard)
+### Platform protection (Vercel dashboard; NEEDS HOSTING CONFIGURATION)
 
-1. **Usage alerts:** enable bandwidth/usage notifications for the team so a flood is noticed early.
-2. **Traffic rules / rate limiting / WAF:** Netlify offers firewall traffic rules (IP and geo blocking) and rate limiting
-   on some paid plans. Check availability on the current plan before relying on them. For a static site these are
-   optional; turn them on if abusive traffic is ever seen in the logs.
-3. **Custom domain:** when connected, keep Netlify's automatic HTTPS (Let's Encrypt) on and "Force HTTPS" behaviour as
-   default. Netlify already redirects `http://` to `https://` (verified on the netlify.app address).
-4. **Deploy notifications / two-factor auth:** turn on 2FA for every Netlify team member; account takeover is a more
+1. **DDoS mitigation** is applied automatically by Vercel on all plans. Nothing to configure.
+2. **Attack Challenge Mode** (Firewall tab): turn on during an active attack to challenge all visitors with a
+   browser check. Leave off normally.
+3. **Firewall custom rules / rate limiting:** available on Vercel's firewall; the number of rules and rate-limiting
+   features depend on the plan. For a static page these are optional; use them if abusive IPs, countries or bots
+   show up in traffic.
+4. **Spend management and usage notifications** (Pro): set before launch.
+5. **Two-factor authentication** for every Vercel and GitHub account with access. Account takeover is a more
    realistic threat to this site than traffic.
-5. **Old duplicate project:** `hiracademyy.netlify.app` serves an older version of the site with different wording.
-   Decide whether to delete it or redirect it, so outdated claims are not reachable.
+
+Rate limiting in browser JavaScript would not stop an attacker, so none was added. `robots.txt` does not block
+attackers; it only guides well-behaved crawlers.
 
 ### If abusive traffic is seen
 
-1. Netlify > project > Logs & metrics / Analytics: identify the paths, IPs and countries involved.
-2. If the plan supports it, add a traffic rule to block or rate-limit the source.
-3. Contact Netlify support with the request IDs (`X-Nf-Request-Id`) from the logs.
-4. If needed, put the domain behind a dedicated DDoS/WAF provider. This is a larger change and should be planned.
+1. Vercel > project > Observability / Firewall: identify the paths, IPs, user agents and countries.
+2. Add a firewall rule to block or challenge the source, or enable Attack Challenge Mode.
+3. Contact Vercel support with the request IDs (`x-vercel-id` header) if the platform mitigation is not enough.
 
-## If a form service is added
+## Deployment workflow
 
-Setting `CONFIG.formEndpoint` makes the page `fetch()` that URL, which the CSP currently blocks. Before going live:
-add the service's origin to `connect-src` in `site/_headers`, rerun the hash tool, update the privacy and cookie
-policies (the privacy policy switches its form paragraph automatically), and use the service's own spam protection and
-rate limiting, because the page cannot enforce them.
+1. Commit locally.
+2. Create (or choose) the GitHub repository, e.g. `hir-dispatch-academy` (private is fine), and push `main`.
+3. Vercel > Add New > Project > import that repository. Framework preset: **Other**. Leave Root Directory as `./`.
+   Build, install and output settings come from `vercel.json` (build `node tools/validate.mjs`, output `site`,
+   no install step). No environment variables.
+4. Production branch: `main`. Pull requests and other branches get preview URLs automatically.
+5. Test the preview URL (checklist below), then promote/merge to `main` for production.
+6. Verify production: `curl -sI https://YOUR-PROJECT.vercel.app/` should show every header in the table above.
+
+Preview/production checklist: page loads at `/`; intro plays and a tap/key skips it; nav and mobile menu work; each
+footer policy opens and closes; the Terms link to "Enrolment and refunds" works; WhatsApp buttons open the right
+number; no console errors; headers present.
+
+## If a form service is added later
+
+Setting `CONFIG.formEndpoint` makes the page `fetch()` that URL, which `connect-src 'self'` blocks. Before going
+live: add the service's origin to `connect-src` in `vercel.json`, rerun `node tools/csp-hashes.mjs --write` (CONFIG
+changed), update the privacy and cookie policies, and rely on the service's own spam protection and rate limiting.
+Any API key for it must stay in the service or in Vercel environment variables, never in the page.
 
 ## Launch checklist (once the production domain is confirmed)
 
-- [ ] Add the head tags from `docs/launch/head-tags-for-launch.html` with the real domain.
+- [ ] Add the domain in Vercel > Settings > Domains and let Vercel issue the certificate.
+- [ ] Add the head tags from `docs/launch/head-tags-for-launch.html` with the real domain (then rerun the CSP tool only if a script changed; these are not scripts).
 - [ ] Move `docs/launch/sitemap.xml` to `site/sitemap.xml` with the real domain, and uncomment the `Sitemap:` line in `site/robots.txt`.
-- [ ] Confirm `Strict-Transport-Security` is sent on the custom domain.
-- [ ] Re-check the response headers: `curl -sI https://YOUR-DOMAIN/`.
+- [ ] Decide what happens to the old Netlify sites (`hirdispatchacademy.netlify.app` and the older `hiracademyy.netlify.app`): delete them or replace them with a redirect, so outdated wording is not reachable.
 
 ## Items awaiting the academy owner
 
