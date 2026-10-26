@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Upload to the site root. Before uploading, replace PRODUCTION-DOMAIN with the confirmed domain.
+     The site is a single page; the policies open from links on it (#privacy-policy etc.), so only the page itself is listed. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://PRODUCTION-DOMAIN/</loc>
+  </url>
+</urlset>
