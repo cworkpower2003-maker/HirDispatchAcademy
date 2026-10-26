@@ -4,9 +4,14 @@ Last reviewed: 26 October 2026
 
 ## How the site works
 
-- **Architecture:** one static HTML page, no framework, no build step, no `package.json`, no dependencies.
-  Entry point: `site/index.html` (about 611 KB; about 343 KB with brotli, 360 KB with gzip). Fonts, photos and the
-  logo are inlined as `data:` URIs, so a page view is **one HTTP request** with no other files to fetch.
+- **Architecture:** static HTML, no framework, no build step, no `package.json`, no dependencies. Five pages,
+  served at clean URLs (`cleanUrls` in `vercel.json`): `/` (`site/index.html`), `/guides` (`site/guides.html`)
+  and three guides in `site/guides/`. The home page is about 308 KB (108 KB with brotli) with its fonts inlined;
+  its 8 photos are separate WebP files in `site/images/` (228 KB in total, lazy-loaded below the fold). The guides
+  have no JavaScript and share `site/assets/guide.css` and the font files in `site/fonts/`.
+- **SEO tooling:** `site.config.json` holds the production domain (empty until it is bought). `tools/set-domain.mjs`
+  writes every domain-dependent tag from it; `tools/faq-schema.mjs` keeps the FAQ structured data identical to the
+  visible FAQs. See `docs/DOMAIN-LAUNCH-CHECKLIST.md`.
 - **Host disclosure:** the privacy policy names Vercel as the hosting provider (request logs: IP address, browser, time).
 - **No backend:** no API, serverless function, database, cookies, analytics or third-party scripts. No environment
   variables or secrets are needed.
@@ -22,12 +27,15 @@ Last reviewed: 26 October 2026
 
 | Path | Published? | Purpose |
 |---|---|---|
-| `site/` | Yes (Vercel output directory) | `index.html`, `og-image.jpg`, `robots.txt` |
+| `site/` | Yes (Vercel output directory) | Pages, `images/`, `fonts/`, `assets/guide.css`, favicons, `og-image.jpg`, `robots.txt` (and `sitemap.xml` once a domain is set) |
+| `site.config.json` | No | Production domain, share image and logo used by `tools/set-domain.mjs` |
 | `vercel.json` | No | Output directory, build command, security headers |
-| `tools/validate.mjs` | No | Pre-deploy checks; Vercel's build command |
+| `tools/validate.mjs` | No | Pre-deploy checks on every page; Vercel's build command |
+| `tools/set-domain.mjs` | No | Applies/checks `site.config.json`: canonical, og tags, JSON-LD URLs, breadcrumbs, sitemap, robots |
+| `tools/faq-schema.mjs` | No | Writes/checks the FAQPage structured data from the visible FAQs |
 | `tools/csp-hashes.mjs` | No | Computes/checks/writes the CSP script hashes in `vercel.json` |
-| `tools/serve-local.mjs` | No | Local preview at http://127.0.0.1:8788 with the `vercel.json` headers applied |
-| `docs/` | No | These notes and the launch templates (head tags, sitemap) |
+| `tools/serve-local.mjs` | No | Local preview at http://127.0.0.1:8788 with the `vercel.json` headers and clean URLs |
+| `docs/` | No | These notes and the domain launch checklist |
 
 Hosting history: the site was first published on Netlify (`hirdispatchacademy.netlify.app`, still live with the
 pre-policy-update version). `netlify.toml` and `site/_headers` were removed when hosting moved to Vercel; they are in
@@ -48,7 +56,8 @@ Open http://127.0.0.1:8788, check the console has no CSP errors, then commit `si
 together. Vercel runs `node tools/validate.mjs` as the build command, so a deploy with stale hashes, a missing file,
 a broken in-page link or a missing security header fails instead of going live.
 
-Editing text outside `<script>` blocks needs no hash update.
+Editing text outside `<script>` blocks needs no hash update. If you edit an FAQ question or answer, run
+`node tools/faq-schema.mjs --write` so the structured data matches; the build fails until you do.
 
 ## Security headers (vercel.json)
 
@@ -69,15 +78,16 @@ not make the site invulnerable.
 
 Caching: HTML uses Vercel's default (`public, max-age=0, must-revalidate`, cached at the edge and purged on each
 deploy), so returning visitors revalidate and get a small `304 Not Modified` instead of the full page, and a new
-deploy is visible immediately. `og-image.jpg` is cached for one day.
+deploy is visible immediately. Photos and fonts have a content hash in their file names and are cached for a year
+(`immutable`); replacing one means a new file name. Favicons and `og-image.jpg` are cached for one day.
 
 ## Traffic: what "10,000" means
 
 | Measure | Meaning for this site | Transfer (measured sizes, compressed) |
 |---|---|---|
-| 10,000 HTTP requests | Each request for `/` returns the whole page; there are no sub-requests | ≈ 3.4 GB if all are full page loads, far less if many are 304 revalidations |
-| 10,000 page views | 10,000 loads of the page = ≈ 10,000 requests | ≈ 3.4 GB |
-| 10,000 unique visitors | Different people; each may view the page several times | ≈ 3.4 GB × average views per visitor |
+| 10,000 HTTP requests | A home-page view is the HTML plus up to 8 photos and 2 icons, so about 11 requests | ≈ 1 GB if every request were the home HTML (108 KB); images are smaller requests |
+| 10,000 page views | ≈ 110,000 requests on first visits | ≈ 3.6 GB if every view loads all photos (≈ 369 KB); repeat views reuse cached photos and transfer a few KB |
+| 10,000 unique visitors | Different people; each may view several pages | ≈ 3.6 GB for one full home view each, plus a few KB per repeat view |
 
 All of this is static content served from Vercel's CDN. No request triggers server-side work, so there is no
 function or database to overload and no function cost. No load test was run; nothing above is a guarantee.
@@ -87,8 +97,9 @@ function or database to overload and no function cost. No load test was run; not
 - **Hobby (free) is for personal, non-commercial use only.** HIR Dispatch Academy is a business, so the **Pro**
   plan is the appropriate one. This is a hosting decision for the owner.
 - Hobby includes roughly 100 GB of data transfer and 1 million edge requests per month. If a limit is exceeded,
-  Vercel can pause the project until the period resets or the plan is upgraded. At ~343 KB per view that is roughly
-  290,000 page views a month.
+  Vercel can pause the project until the period resets or the plan is upgraded. At ~369 KB per first full view that is
+  roughly 280,000 first visits a month; the 1 million edge requests (about 90,000 first visits at ~11 requests each)
+  is the tighter Hobby limit.
 - Pro includes more (about 1 TB transfer and 10 million edge requests a month) and then bills usage on demand. Set a
   **spend limit** (Settings > Billing > Spend Management) so a flood cannot create an unexpected bill.
 - Check the current numbers on Vercel's pricing page before deciding; they change.
@@ -123,11 +134,11 @@ attackers; it only guides well-behaved crawlers.
    no install step). No environment variables.
 4. Production branch: `main`. Pull requests and other branches get preview URLs automatically.
 5. Test the preview URL (checklist below), then promote/merge to `main` for production.
-6. Verify production: `curl -sI https://YOUR-PROJECT.vercel.app/` should show every header in the table above.
+6. Verify production: `curl -sI https://hirdispatchacademy.vercel.app/` should show every header in the table above.
 
 Preview/production checklist: page loads at `/`; intro plays and a tap/key skips it; nav and mobile menu work; each
 footer policy opens and closes; the Terms link to "Enrolment and refunds" works; WhatsApp buttons open the right
-number; no console errors; headers present.
+number; `/guides` and each guide load with their styling; no console errors; headers present.
 
 ## If a form service is added later
 
@@ -138,10 +149,8 @@ Any API key for it must stay in the service or in Vercel environment variables, 
 
 ## Launch checklist (once the production domain is confirmed)
 
-- [ ] Add the domain in Vercel > Settings > Domains and let Vercel issue the certificate.
-- [ ] Add the head tags from `docs/launch/head-tags-for-launch.html` with the real domain (then rerun the CSP tool only if a script changed; these are not scripts).
-- [ ] Move `docs/launch/sitemap.xml` to `site/sitemap.xml` with the real domain, and uncomment the `Sitemap:` line in `site/robots.txt`.
-- [ ] Decide what happens to the old Netlify sites (`hirdispatchacademy.netlify.app` and the older `hiracademyy.netlify.app`): delete them or replace them with a redirect, so outdated wording is not reachable.
+See `docs/DOMAIN-LAUNCH-CHECKLIST.md`: buying and connecting the domain, one config change plus
+`node tools/set-domain.mjs`, the old Netlify and vercel.app addresses, Search Console and Google Business Profile.
 
 ## Items awaiting the academy owner
 

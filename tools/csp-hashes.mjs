@@ -1,21 +1,30 @@
-// Keeps the Content-Security-Policy in vercel.json in step with the inline scripts in site/index.html.
+// Keeps the Content-Security-Policy in vercel.json in step with the inline scripts in every page under site/.
 //
 // The CSP allows only inline scripts whose exact SHA-256 hash is listed, so editing any inline script
 // (including the CONFIG block) changes its hash and the browser would refuse to run it.
 //
-//   node tools/csp-hashes.mjs           print the hashes the page needs
+//   node tools/csp-hashes.mjs           print the hashes the pages need
 //   node tools/csp-hashes.mjs --check   fail (exit 1) if vercel.json does not list exactly those hashes
 //   node tools/csp-hashes.mjs --write   rewrite the hashes in vercel.json
 //
 // tools/validate.mjs (the Vercel build command) runs the same check, so a deploy with stale hashes stops
 // instead of going live broken.
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 export const htmlPath = `${root}site/index.html`;
 export const vercelPath = `${root}vercel.json`;
+
+// All HTML pages joined: one CSP header covers every path, so it must list the inline scripts of every page
+export const siteHtml = () => {
+  const out = [];
+  const walk = (dir) => { for (const n of readdirSync(dir)) { const p = join(dir, n); if (statSync(p).isDirectory()) walk(p); else if (n.endsWith(".html")) out.push(readFileSync(p, "utf8")); } };
+  walk(`${root}site`);
+  return out.join("\n");
+};
 
 const executable = (attrs) => {
   if (/\ssrc\s*=/i.test(attrs)) return false;
@@ -44,15 +53,15 @@ export const compare = (html, config) => {
 };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const html = readFileSync(htmlPath, "utf8");
+  const html = siteHtml();
   const mode = process.argv[2];
   if (!mode) { console.log(inlineScriptHashes(html).join("\n")); process.exit(0); }
   const config = JSON.parse(readFileSync(vercelPath, "utf8"));
   const { needed, same } = compare(html, config);
 
   if (mode === "--check") {
-    if (same) { console.log(`CSP OK: ${needed.length} inline script hashes match site/index.html`); process.exit(0); }
-    console.error("CSP hashes in vercel.json do not match the inline scripts in site/index.html.");
+    if (same) { console.log(`CSP OK: ${needed.length} inline script hashes match the pages in site/`); process.exit(0); }
+    console.error("CSP hashes in vercel.json do not match the inline scripts in site/.");
     console.error("Run: node tools/csp-hashes.mjs --write   then review and commit vercel.json.");
     process.exit(1);
   }

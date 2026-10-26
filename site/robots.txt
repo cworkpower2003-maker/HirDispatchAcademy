@@ -1,6 +1,4 @@
 # robots.txt only guides well-behaved search crawlers. It is not access control and does not stop attackers.
+# The Sitemap line is added by tools/set-domain.mjs once the production domain is set in site.config.json.
 User-agent: *
 Allow: /
-
-# Add once the production domain is confirmed (see docs/launch/sitemap.xml):
-# Sitemap: https://PRODUCTION-DOMAIN/sitemap.xml

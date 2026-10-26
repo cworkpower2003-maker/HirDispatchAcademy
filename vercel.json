@@ -4,6 +4,7 @@
   "installCommand": "",
   "buildCommand": "node tools/validate.mjs",
   "outputDirectory": "site",
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
@@ -40,6 +41,33 @@
     },
     {
       "source": "/og-image.jpg",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/images/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/fonts/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(favicon.ico|favicon-96x96.png|apple-touch-icon.png)",
       "headers": [
         {
           "key": "Cache-Control",
