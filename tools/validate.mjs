@@ -146,9 +146,11 @@ if (config) {
     const hitsProd = robotsRules.filter((r) => r.has.some((c) => c.type === "host" && (hostRe(c).test(prodHost) || hostRe(c).test(apexHost))));
     check(hitsProd.length === 0, `production hosts ${prodHost} and ${apexHost} are not marked noindex`);
     check(robotsRules.some((r) => r.has.some((c) => c.type === "host" && hostRe(c).test("hirdispatchacademy-git-preview-team.vercel.app"))), "preview deployments (*.vercel.app) are marked noindex");
-    const vercelRedirect = (config.redirects || []).find((r) => r.has?.some((c) => c.type === "host" && c.value === "hirdispatchacademy.vercel.app"));
-    check(!!vercelRedirect && vercelRedirect.permanent === true && vercelRedirect.destination === `${origin}/:path*` && vercelRedirect.source === "/:path*",
-      `hirdispatchacademy.vercel.app permanently redirects every path to ${origin}`);
+    // Vercel does not match the bare "/" with "/:path*", so both rules are required
+    const onVercelHost = (config.redirects || []).filter((r) => r.permanent === true && r.has?.some((c) => c.type === "host" && c.value === "hirdispatchacademy.vercel.app"));
+    const rootRule = onVercelHost.some((r) => r.source === "/" && r.destination === `${origin}/`);
+    const pathRule = onVercelHost.some((r) => r.source === "/:path*" && r.destination === `${origin}/:path*`);
+    check(rootRule && pathRule, `hirdispatchacademy.vercel.app permanently redirects "/" and every other path to ${origin}${rootRule ? "" : " (missing the \"/\" rule)"}${pathRule ? "" : " (missing the \"/:path*\" rule)"}`);
   }
   if (hasHome && csp) {
     const { needed, same } = compare(siteHtml(), config);

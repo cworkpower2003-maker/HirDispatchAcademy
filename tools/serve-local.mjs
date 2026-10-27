@@ -32,10 +32,14 @@ createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
   const path = decodeURIComponent(url.pathname);
   const host = (req.headers.host || "").replace(/:\d+$/, "");
-  // Host redirects in the "/:path*" form that vercel.json uses; the query string is kept, as on Vercel
+  // Host redirects as vercel.json uses them; the query string is kept, as on Vercel. Like Vercel (observed on the live
+  // site), "/:path*" does not match the bare "/", which needs its own exact "/" rule.
   for (const r of vercel.redirects || []) {
-    if (r.source === "/:path*" && hostOk(r.has, host)) {
-      res.writeHead(r.permanent ? 308 : 307, { Location: r.destination.replace("/:path*", url.pathname) + url.search }); res.end(); return;
+    if (!hostOk(r.has, host)) continue;
+    const wild = r.source === "/:path*" && url.pathname !== "/";
+    if (wild || r.source === url.pathname) {
+      const location = wild ? r.destination.replace("/:path*", url.pathname) : r.destination;
+      res.writeHead(r.permanent ? 308 : 307, { Location: location + url.search }); res.end(); return;
     }
   }
   for (const r of rules) if (r.path.test(path) && hostOk(r.has, host)) for (const [k, v] of r.headers) res.setHeader(k, v);

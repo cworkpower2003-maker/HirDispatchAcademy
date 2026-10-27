@@ -7,6 +7,17 @@
   "cleanUrls": true,
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "hirdispatchacademy.vercel.app"
+        }
+      ],
+      "destination": "https://www.hirdispatchacademy.com/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
