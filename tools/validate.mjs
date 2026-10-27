@@ -74,8 +74,10 @@ const seo = [];
 const titles = new Map(), descriptions = new Map();
 for (const [file, html] of pageHtml) {
   const name = relative(site, file);
-  const title = /<title>([^<]+)<\/title>/.exec(html)?.[1];
-  const desc = /<meta name="description" content="([^"]+)">/.exec(html)?.[1];
+  // Lengths are measured on the text people see, so "&amp;" counts as one character
+  const decode = (s) => s?.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+  const title = decode(/<title>([^<]+)<\/title>/.exec(html)?.[1]);
+  const desc = decode(/<meta name="description" content="([^"]+)">/.exec(html)?.[1]);
   if (!/<html lang="[a-z]{2}(-[A-Z]{2})?">/.test(html)) seo.push(`${name}: <html lang> missing`);
   if (!title || title.length < 20 || title.length > 75) seo.push(`${name}: title missing or not 20-75 characters`);
   if (!desc || desc.length < 70 || desc.length > 165) seo.push(`${name}: meta description missing or not 70-165 characters`);
