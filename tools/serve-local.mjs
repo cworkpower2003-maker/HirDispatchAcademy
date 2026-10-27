@@ -19,8 +19,11 @@ const types = {
 const vercel = JSON.parse(readFileSync(fileURLToPath(new URL("../vercel.json", import.meta.url)), "utf8"));
 // "(.*)" stays a wildcard; every other "." in a source is a literal dot
 const toRegExp = (source) => new RegExp(`^${source.split("(.*)").map((part) => part.replace(/\./g, "\\.")).join("(.*)")}$`);
+// "has": [{ "type": "host", "value": ... }] conditions; the value is matched against the whole host name
+const hostOk = (has, host) => (has || []).every((c) => c.type !== "host" || new RegExp(`^(?:${c.value})$`).test(host));
 const rules = (vercel.headers || []).map((r) => ({
   path: toRegExp(r.source),
+  has: r.has,
   headers: r.headers.map((h) => [h.key, h.value])
 }));
 const isFile = (f) => { try { return f.startsWith(site) && statSync(f).isFile(); } catch { return false; } };
@@ -28,7 +31,14 @@ const isFile = (f) => { try { return f.startsWith(site) && statSync(f).isFile();
 createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
   const path = decodeURIComponent(url.pathname);
-  for (const r of rules) if (r.path.test(path)) for (const [k, v] of r.headers) res.setHeader(k, v);
+  const host = (req.headers.host || "").replace(/:\d+$/, "");
+  // Host redirects in the "/:path*" form that vercel.json uses; the query string is kept, as on Vercel
+  for (const r of vercel.redirects || []) {
+    if (r.source === "/:path*" && hostOk(r.has, host)) {
+      res.writeHead(r.permanent ? 308 : 307, { Location: r.destination.replace("/:path*", url.pathname) + url.search }); res.end(); return;
+    }
+  }
+  for (const r of rules) if (r.path.test(path) && hostOk(r.has, host)) for (const [k, v] of r.headers) res.setHeader(k, v);
   if (vercel.cleanUrls && path.endsWith(".html")) {
     res.writeHead(308, { Location: (path === "/index.html" ? "/" : path.slice(0, -5)) + url.search }); res.end(); return;
   }

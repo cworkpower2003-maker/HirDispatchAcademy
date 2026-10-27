@@ -136,6 +136,20 @@ if (config) {
   check(!/script-src[^;]*'unsafe-(inline|eval)'/.test(csp), "CSP script-src has no 'unsafe-inline' or 'unsafe-eval'");
   check(/frame-ancestors 'none'/.test(csp), "CSP blocks framing (frame-ancestors 'none')");
   check(!/(script|img|font|connect|style)-src[^;]*(https?:|\*)/.test(csp), "CSP allows no external origins");
+  // Indexing safeguards: noindex only ever applies to *.vercel.app hosts, never to the production domain
+  const hostRe = (c) => new RegExp(`^(?:${c.value})$`);
+  const robotsRules = (config.headers || []).filter((r) => r.headers.some((h) => h.key.toLowerCase() === "x-robots-tag"));
+  const unconditional = robotsRules.filter((r) => !(r.has || []).some((c) => c.type === "host"));
+  check(unconditional.length === 0, "no X-Robots-Tag header applies to every host (it must be limited to preview hosts)");
+  if (origin && !originProblem) {
+    const prodHost = new URL(origin).hostname, apexHost = prodHost.replace(/^www\./, "");
+    const hitsProd = robotsRules.filter((r) => r.has.some((c) => c.type === "host" && (hostRe(c).test(prodHost) || hostRe(c).test(apexHost))));
+    check(hitsProd.length === 0, `production hosts ${prodHost} and ${apexHost} are not marked noindex`);
+    check(robotsRules.some((r) => r.has.some((c) => c.type === "host" && hostRe(c).test("hirdispatchacademy-git-preview-team.vercel.app"))), "preview deployments (*.vercel.app) are marked noindex");
+    const vercelRedirect = (config.redirects || []).find((r) => r.has?.some((c) => c.type === "host" && c.value === "hirdispatchacademy.vercel.app"));
+    check(!!vercelRedirect && vercelRedirect.permanent === true && vercelRedirect.destination === `${origin}/:path*` && vercelRedirect.source === "/:path*",
+      `hirdispatchacademy.vercel.app permanently redirects every path to ${origin}`);
+  }
   if (hasHome && csp) {
     const { needed, same } = compare(siteHtml(), config);
     check(same, `CSP hashes match the ${needed.length} inline scripts across all pages (fix: node tools/csp-hashes.mjs --write)`);

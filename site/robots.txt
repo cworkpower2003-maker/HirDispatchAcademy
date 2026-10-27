@@ -2,3 +2,5 @@
 # The Sitemap line is added by tools/set-domain.mjs once the production domain is set in site.config.json.
 User-agent: *
 Allow: /
+
+Sitemap: https://www.hirdispatchacademy.com/sitemap.xml

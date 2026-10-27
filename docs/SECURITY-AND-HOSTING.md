@@ -4,12 +4,15 @@ Last reviewed: 26 October 2026
 
 ## How the site works
 
-- **Architecture:** static HTML, no framework, no build step, no `package.json`, no dependencies. Five pages,
+- **Architecture:** static HTML, no framework, no build step, no `package.json`, no dependencies. Six pages,
   served at clean URLs (`cleanUrls` in `vercel.json`): `/` (`site/index.html`), `/guides` (`site/guides.html`)
-  and three guides in `site/guides/`. The home page is about 308 KB (108 KB with brotli) with its fonts inlined;
+  and four guides in `site/guides/`. The home page is about 308 KB (108 KB with brotli) with its fonts inlined;
   its 8 photos are separate WebP files in `site/images/` (228 KB in total, lazy-loaded below the fold). The guides
   have no JavaScript and share `site/assets/guide.css` and the font files in `site/fonts/`.
-- **SEO tooling:** `site.config.json` holds the production domain (empty until it is bought). `tools/set-domain.mjs`
+- **Domain:** canonical host `https://www.hirdispatchacademy.com` (GoDaddy DNS → Vercel). The root domain redirects
+  to `www`; `hirdispatchacademy.vercel.app` redirects to `www` and other `*.vercel.app` (preview) hosts send
+  `X-Robots-Tag: noindex` (both in `vercel.json`).
+- **SEO tooling:** `site.config.json` holds the production domain. `tools/set-domain.mjs`
   writes every domain-dependent tag from it; `tools/faq-schema.mjs` keeps the FAQ structured data identical to the
   visible FAQs. See `docs/DOMAIN-LAUNCH-CHECKLIST.md`.
 - **Host disclosure:** the privacy policy names Vercel as the hosting provider (request logs: IP address, browser, time).
